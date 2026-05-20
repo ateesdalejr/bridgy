@@ -1,0 +1,17 @@
+services:
+  bridgy:
+    build: .
+    image: bridgy:local
+    ports:
+      - "3000:3000"
+    env_file:
+      - .env
+    environment:
+      DATA_DIR: /app/data
+      PORT: "3000"
+    volumes:
+      - bridgy-data:/app/data
+    restart: unless-stopped
+
+volumes:
+  bridgy-data:
