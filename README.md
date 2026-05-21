@@ -128,6 +128,64 @@ Then start the tunnel when developing:
 cloudflared tunnel --config deploy/cloudflared.local.yml run bridgy-dev
 ```
 
+### Where The Tunnel ID And Credentials Come From
+
+Create them with `cloudflared` while logged into the Cloudflare account for `bridgy.chat`:
+
+```sh
+cloudflared tunnel login
+cloudflared tunnel create bridgy-dev
+cloudflared tunnel route dns bridgy-dev bridgy.chat
+```
+
+`cloudflared tunnel create bridgy-dev` prints a tunnel UUID. You can see it again with:
+
+```sh
+cloudflared tunnel list
+```
+
+It also writes a credentials JSON file locally:
+
+```text
+~/.cloudflared/<tunnel-id>.json
+```
+
+That JSON file is secret. Do not commit it. On a new server, either run the `login` and `create` flow there to make a new tunnel, or securely copy the existing JSON file to the new server.
+
+The current dev tunnel config expects:
+
+```text
+deploy/cloudflared.local.yml
+```
+
+That file is ignored by git because it points at a local credentials path.
+
+### Quick Server Script
+
+After Docker, Docker Compose, and `cloudflared` are installed on a server, copy the tunnel credentials JSON there, then run:
+
+```sh
+./deploy/setup-server.sh
+```
+
+The script tries to auto-detect the tunnel UUID from an existing config, from `cloudflared tunnel list`, or from the only UUID-named JSON file in `~/.cloudflared`.
+
+If auto-detection is ambiguous, pass the tunnel id explicitly:
+
+```sh
+./deploy/setup-server.sh --tunnel-id <tunnel-id>
+```
+
+If the credentials JSON is somewhere other than `~/.cloudflared/<tunnel-id>.json`, pass it explicitly:
+
+```sh
+./deploy/setup-server.sh \
+  --tunnel-id <tunnel-id> \
+  --credentials-file /path/to/<tunnel-id>.json
+```
+
+The script creates `.env` if missing, writes `deploy/cloudflared.local.yml`, starts Docker Compose, backgrounds `cloudflared`, and checks `/health`.
+
 ### Temporary Tunnel
 
 You can use a random TryCloudflare URL for a quick smoke test:

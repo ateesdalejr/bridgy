@@ -2,10 +2,6 @@ name = "bridgy-chat-waitlist"
 compatibility_date = "2025-04-01"
 pages_build_output_dir = "./public"
 
-# Create a KV namespace in Cloudflare and bind it as WAITLIST.
-# Keep real namespace ids out of commits if this repo is public.
-#
-# [[kv_namespaces]]
-# binding = "WAITLIST"
-# id = "replace-with-production-kv-id"
-# preview_id = "replace-with-preview-kv-id"
+[[kv_namespaces]]
+binding = "WAITLIST"
+id = "4ae8834eb15d4b6da3a15c6554d6cc7c"
