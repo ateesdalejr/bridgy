@@ -50,6 +50,15 @@ export function setupPage(code: string, smsPhone: string, options: SetupPageOpti
         color: #4b5563;
         line-height: 1.5;
       }
+      .mobile-warning {
+        display: none;
+        margin: 16px 0;
+        padding: 12px;
+        border-radius: 6px;
+        background: #fff7ed;
+        color: #7c2d12;
+        border: 1px solid #fed7aa;
+      }
       button {
         width: 100%;
         border: 0;
@@ -63,6 +72,21 @@ export function setupPage(code: string, smsPhone: string, options: SetupPageOpti
       button:disabled {
         opacity: 0.6;
         cursor: not-allowed;
+      }
+      .secondary {
+        margin-top: 8px;
+        background: #1f2937;
+      }
+      input {
+        width: 100%;
+        box-sizing: border-box;
+        border: 1px solid #cbd5e1;
+        border-radius: 6px;
+        padding: 12px;
+        font: inherit;
+        margin-top: 8px;
+        background: transparent;
+        color: inherit;
       }
       .status {
         margin: 18px 0;
@@ -89,12 +113,33 @@ export function setupPage(code: string, smsPhone: string, options: SetupPageOpti
       .hint {
         font-size: 14px;
       }
+      .pairing {
+        margin-top: 18px;
+        border-top: 1px solid #d7dce2;
+        padding-top: 18px;
+      }
+      .pairing-code {
+        display: none;
+        margin-top: 12px;
+        padding: 14px;
+        border-radius: 6px;
+        background: #ecfdf5;
+        color: #064e3b;
+        font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+        font-size: 28px;
+        font-weight: 800;
+        text-align: center;
+        letter-spacing: 2px;
+      }
       @media (prefers-color-scheme: dark) {
         :root { background: #111827; color: #f9fafb; }
         main { background: #182235; border-color: #334155; }
         p { color: #cbd5e1; }
         .status { background: #10253c; color: #c7ddf2; }
         .code { color: #f9fafb; }
+        .mobile-warning { background: #3a2414; color: #fed7aa; border-color: #9a5b1e; }
+        .pairing { border-color: #334155; }
+        .pairing-code { background: #102e26; color: #a7f3d0; }
       }
     </style>
   </head>
@@ -103,16 +148,37 @@ export function setupPage(code: string, smsPhone: string, options: SetupPageOpti
       <h1>Link WhatsApp</h1>
       <p>This links Bridgy to the WhatsApp account for <span class="code">${safeUserLabel}</span>.</p>
       ${helperText}
+      <div id="mobile-warning" class="mobile-warning">
+        Open this link on a computer, tablet, or a second phone. Linking needs WhatsApp on your primary phone to scan the QR code shown here.
+      </div>
       <button id="start">Start WhatsApp Link</button>
       <div id="status" class="status">waiting</div>
       <img id="qr" class="qr" alt="WhatsApp link QR code" />
       <p>In WhatsApp, open Linked Devices and scan the QR code when it appears.</p>
+      <div class="pairing">
+        <p>Using the same phone that has WhatsApp? Enter that WhatsApp phone number and use a pairing code instead.</p>
+        <input id="pair-phone" inputmode="tel" autocomplete="tel" placeholder="+15551234567" />
+        <button id="pair" class="secondary">Get Pairing Code</button>
+        <div id="pairing-code" class="pairing-code"></div>
+        <p class="hint">In WhatsApp, open Linked Devices, choose Link a Device, then use the phone-number pairing option and enter this code.</p>
+      </div>
     </main>
     <script>
       const code = ${JSON.stringify(safeCode)};
       const start = document.getElementById("start");
       const status = document.getElementById("status");
       const qr = document.getElementById("qr");
+      const mobileWarning = document.getElementById("mobile-warning");
+      const pair = document.getElementById("pair");
+      const pairPhone = document.getElementById("pair-phone");
+      const pairingCode = document.getElementById("pairing-code");
+      let polling = false;
+
+      const isLikelyPhone = /Android|iPhone|iPod/i.test(navigator.userAgent) && Math.min(window.innerWidth, window.innerHeight) < 700;
+      if (isLikelyPhone) {
+        mobileWarning.style.display = "block";
+        start.textContent = "Show QR Anyway";
+      }
 
       function setStatus(snapshot) {
         status.textContent = snapshot.error ? snapshot.status + ": " + snapshot.error : snapshot.status;
@@ -126,6 +192,20 @@ export function setupPage(code: string, smsPhone: string, options: SetupPageOpti
         }
       }
 
+      async function pollStatus() {
+        if (polling) return;
+        polling = true;
+        while (true) {
+          try {
+            const response = await fetch("/setup/" + code + "/status", { cache: "no-store" });
+            if (response.ok) setStatus(await response.json());
+          } catch {
+            status.textContent = "connection_lost";
+          }
+          await new Promise((resolve) => setTimeout(resolve, 2000));
+        }
+      }
+
       start.addEventListener("click", async () => {
         start.disabled = true;
         status.textContent = "connecting";
@@ -136,9 +216,38 @@ export function setupPage(code: string, smsPhone: string, options: SetupPageOpti
         }
       });
 
+      pair.addEventListener("click", async () => {
+        pair.disabled = true;
+        pairingCode.style.display = "none";
+        status.textContent = "requesting_pairing_code";
+        const response = await fetch("/setup/" + code + "/pairing-code", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ phone: pairPhone.value })
+        });
+        if (!response.ok) {
+          status.textContent = await response.text();
+          pair.disabled = false;
+          return;
+        }
+
+        const body = await response.json();
+        pairingCode.textContent = body.code;
+        pairingCode.style.display = "block";
+        status.textContent = "enter_pairing_code_in_whatsapp";
+        pair.disabled = false;
+      });
+
       const events = new EventSource("/setup/" + code + "/events");
       events.onmessage = (event) => setStatus(JSON.parse(event.data));
-      events.onerror = () => { status.textContent = "connection_lost"; };
+      events.onerror = () => {
+        status.textContent = "using_polling";
+        events.close();
+        void pollStatus();
+      };
+      setTimeout(() => {
+        if (status.textContent === "waiting") void pollStatus();
+      }, 2500);
     </script>
   </body>
 </html>`;

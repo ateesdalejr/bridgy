@@ -29,6 +29,60 @@ describe("Quo webhook helpers", () => {
     });
   });
 
+  test("parses legacy body and string to fields", () => {
+    const payload = {
+      id: "EV2",
+      type: "message.received",
+      data: {
+        object: {
+          id: "MSG2",
+          from: "+15551234567",
+          to: "+15557654321",
+          direction: "incoming",
+          body: "legacy hello",
+        },
+      },
+    };
+
+    expect(parseQuoInboundMessage(payload, "fallback")).toEqual({
+      eventId: "EV2",
+      messageId: "MSG2",
+      from: "+15551234567",
+      to: "+15557654321",
+      text: "legacy hello",
+      phoneNumberId: undefined,
+    });
+  });
+
+  test("parses beta webhook payloads", () => {
+    const payload = {
+      id: "msg_2SampleEventId0000000000000",
+      apiVersion: "2026-03-30",
+      type: "message.received",
+      data: {
+        context: {
+          phoneNumberId: "PNsample",
+          recipientIdentifiers: ["+15555555678"],
+          senderIdentifier: "+15555551234",
+        },
+        resource: {
+          direction: "incoming",
+          id: "ACsample",
+          text: "Hello from OpenPhone!",
+        },
+      },
+    };
+
+    expect(parseQuoInboundMessage(payload, "fallback")).toEqual({
+      eventId: "msg_2SampleEventId0000000000000",
+      messageId: "ACsample",
+      from: "+15555551234",
+      to: "+15555555678",
+      text: "Hello from OpenPhone!",
+      phoneNumberId: "PNsample",
+    });
+  });
+
   test("verifies Svix-style webhook signatures", () => {
     const secretBytes = Buffer.from("test-secret");
     const secret = `whsec_${secretBytes.toString("base64")}`;

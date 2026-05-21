@@ -44,3 +44,14 @@ export interface QuoInboundMessage {
   text: string;
   phoneNumberId?: string;
 }
+
+export interface WebhookDelivery {
+  id: string;
+  source: string;
+  eventType: string | null;
+  fromPhone: string | null;
+  textPreview: string | null;
+  status: string;
+  error: string | null;
+  receivedAt: number;
+}

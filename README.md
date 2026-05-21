@@ -1,8 +1,8 @@
 # Bridgy
 
-Bridgy is a simple WhatsApp to SMS two way bridge for dumb phone users.
+Bridgy is a simple two-way WhatsApp-to-SMS bridge for dumb phone users.
 
-Problem: dumb phone users still want to communicate with their loved ones and others over WhatsApp, but they do not have access to hardware that can run WhatsApp. Bridgy solves that problem by letting users send and receive WhatsApp messages over SMS.
+Problem: dumb phone users still want to communicate with loved ones and others over WhatsApp, but they do not have hardware that can comfortably run WhatsApp. Bridgy lets users send and receive WhatsApp messages over SMS.
 
 ## Current MVP
 
@@ -15,11 +15,13 @@ This repo is a Bun + TypeScript implementation of the phased MVP plan:
 5. Short-link onboarding.
 6. Multi-user isolation by SMS phone number.
 7. Aliases and plain-text replies.
-8. Railway-ready deployment with persistent storage.
+8. Docker/Railway-style deployment with persistent storage.
 
-The MVP is text-only. It assumes users already have WhatsApp accounts they can link once from a PC using WhatsApp Linked Devices.
+The MVP is text-only. It assumes users already have WhatsApp accounts they can link once.
 
-## Quick Start
+Cloudflare is used as the public edge/tunnel for `bridgy.chat`. The app itself should run as a long-lived Bun process with persistent disk because Baileys needs WebSocket connections and WhatsApp session files. Cloudflare Workers/Wrangler are not the current target runtime for the WhatsApp bridge process.
+
+## Current Dev Runbook
 
 Install dependencies:
 
@@ -33,22 +35,283 @@ Copy environment values:
 cp .env.example .env
 ```
 
-Run tests:
+For the normal local dev setup behind the named Cloudflare Tunnel, `.env` should include:
 
 ```sh
-bun test
+PUBLIC_BASE_URL=https://bridgy.chat
+PORT=3000
+DATA_DIR=./data
+QUO_API_KEY=...
+QUO_FROM=PN...
+QUO_WEBHOOK_ID=...
+QUO_WEBHOOK_KEY=whsec_...
+SMS_DRY_RUN=false
 ```
 
-Run the server:
+Do not commit `.env`; it contains Quo secrets.
+
+Run the app:
 
 ```sh
 bun run dev
 ```
 
-If port 3000 is busy:
+In another terminal, run the named tunnel:
 
 ```sh
-PORT=45187 bun run dev
+cloudflared tunnel --config deploy/cloudflared.local.yml run bridgy-dev
+```
+
+Verify the public URL reaches the local Bun server:
+
+```sh
+curl https://bridgy.chat/health
+```
+
+Expected response:
+
+```json
+{"ok":true}
+```
+
+Open the setup smoke page:
+
+```text
+https://bridgy.chat/setup/test
+```
+
+By default, `/setup/test` displays `test user` instead of a fake SMS number. Set `BRIDGY_TEST_SMS_PHONE=+1...` if you want that page tied to a specific local test number.
+
+## Cloudflare Tunnel
+
+The stable development path is a named Cloudflare Tunnel for `bridgy.chat`.
+
+Install and authenticate `cloudflared`:
+
+```sh
+cloudflared tunnel login
+```
+
+Create the tunnel once:
+
+```sh
+cloudflared tunnel create bridgy-dev
+```
+
+Create a local config from the example:
+
+```sh
+cp deploy/cloudflared.example.yml deploy/cloudflared.local.yml
+```
+
+Fill in the tunnel id and credentials path. The local file is ignored by git.
+
+```yaml
+tunnel: YOUR_TUNNEL_ID
+credentials-file: /Users/YOU/.cloudflared/YOUR_TUNNEL_ID.json
+
+ingress:
+  - hostname: bridgy.chat
+    service: http://127.0.0.1:3000
+  - service: http_status:404
+```
+
+Create the DNS route once:
+
+```sh
+cloudflared tunnel route dns bridgy-dev bridgy.chat
+```
+
+Then start the tunnel when developing:
+
+```sh
+cloudflared tunnel --config deploy/cloudflared.local.yml run bridgy-dev
+```
+
+### Temporary Tunnel
+
+You can use a random TryCloudflare URL for a quick smoke test:
+
+```sh
+cloudflared tunnel --url http://127.0.0.1:3000
+```
+
+Copy the generated `https://...trycloudflare.com` URL into `.env` as `PUBLIC_BASE_URL`, restart `bun run dev`, and create or update the Quo webhook against that URL. The URL changes every time, so the named `bridgy.chat` tunnel is much easier for SMS testing.
+
+The setup page uses Server-Sent Events when available and falls back to polling, so quick tunnels can work for setup testing. The named tunnel is still the least fussy path.
+
+## Quo Setup
+
+Configure Quo/OpenPhone to send `message.received` events to:
+
+```text
+https://bridgy.chat/webhooks/quo
+```
+
+Add your Quo API key to `.env`:
+
+```sh
+QUO_API_KEY=...
+```
+
+List your Quo phone numbers and copy the `id` for the number Bridgy should send from:
+
+```sh
+bun run quo:list-numbers
+```
+
+Set it as:
+
+```sh
+QUO_FROM=PN...
+```
+
+Test outbound SMS:
+
+```sh
+QUO_TEST_TO=+15551234567 bun run quo:send-test
+```
+
+Create the inbound webhook against `PUBLIC_BASE_URL`:
+
+```sh
+bun run quo:create-webhook
+```
+
+Save the returned values in `.env`:
+
+```sh
+QUO_WEBHOOK_ID=...
+QUO_WEBHOOK_KEY=whsec_...
+```
+
+Turn off dry-run once `QUO_API_KEY`, `QUO_FROM`, and the webhook values are set:
+
+```sh
+SMS_DRY_RUN=false
+```
+
+Restart Bridgy so it picks up the new env:
+
+```sh
+bun run dev
+```
+
+Send Quo's signed test event:
+
+```sh
+bun run quo:test-webhook
+```
+
+Inspect recent webhook deliveries from Quo:
+
+```sh
+bun run quo:webhook-events
+```
+
+Inspect a single Quo webhook event:
+
+```sh
+bun run quo:webhook-event <event-id>
+```
+
+Inspect what Bridgy has received locally:
+
+```sh
+curl https://bridgy.chat/debug/webhooks
+```
+
+`/debug/webhooks` is a dev diagnostic endpoint. Do not leave it exposed forever in a real production deployment.
+
+If Quo credentials are missing or `SMS_DRY_RUN=true`, Bridgy prints SMS sends instead of sending them:
+
+```text
+[sms:dry-run] to +15551234567: WhatsApp linked. Text MENU for commands.
+```
+
+## WhatsApp Linking
+
+Run the Phase 1 WhatsApp smoke test:
+
+```sh
+WA_SMOKE_TO=+15551234567 bun run smoke:wa
+```
+
+After scanning the QR, WhatsApp may close the stream with `restart required`. That is expected during pairing; the smoke script reconnects with the saved credentials and should then print `WhatsApp linked.`
+
+For the product flow, a user texts the Quo number:
+
+```text
+START
+```
+
+Bridgy replies with a short setup link like:
+
+```text
+https://bridgy.chat/AB12CD
+```
+
+The setup page supports two linking paths:
+
+- Computer/tablet/second phone: open the link there, then scan the QR from WhatsApp > Linked Devices.
+- Same smartphone as WhatsApp: open the link, enter the WhatsApp phone number, tap `Get Pairing Code`, then in WhatsApp use Linked Devices > Link a Device > Link with phone number instead.
+
+The same-phone pairing flow exists because a user cannot scan a QR shown on the same phone camera they need for WhatsApp.
+
+## SMS Commands
+
+Users text the Quo number:
+
+```text
+START
+LINK
+MENU
+COMMANDS
+ADD mom +15551234567
+@mom hello
+@+15551234567 hello
+WHO
+RESET
+```
+
+Plain SMS replies go to the last active WhatsApp chat.
+
+`HELP` and `STOP` are carrier/10DLC-reserved keywords. Bridgy intentionally ignores them so the SMS provider/carrier flow can handle them. Use `MENU` or `COMMANDS` for the app help text.
+
+## End-to-End Test
+
+1. Start Bun with `bun run dev`.
+2. Start the named tunnel with `cloudflared tunnel --config deploy/cloudflared.local.yml run bridgy-dev`.
+3. Confirm `curl https://bridgy.chat/health` returns `{"ok":true}`.
+4. Confirm Quo webhook testing succeeds with `bun run quo:test-webhook`.
+5. Text `START` to the Quo number.
+6. Open the returned `https://bridgy.chat/<CODE>` link.
+7. Link WhatsApp by QR or pairing code.
+8. Text `MENU`.
+9. Add a WhatsApp contact with `ADD mom +15551234567`.
+10. Send `@mom hello`.
+11. Reply from WhatsApp and confirm it arrives by SMS.
+
+Final multi-user acceptance:
+
+1. Two SMS users text `START`.
+2. Each opens their own setup link.
+3. Each links a different WhatsApp account.
+4. Each sends and receives WhatsApp messages by SMS.
+5. No message crosses users.
+
+## Tests
+
+Run unit tests:
+
+```sh
+bun test
+```
+
+Run the TypeScript compiler:
+
+```sh
+bunx tsc --noEmit
 ```
 
 ## Docker
@@ -67,80 +330,23 @@ docker compose up --build
 
 The compose setup mounts persistent app state at `/app/data`, including SQLite and WhatsApp auth sessions.
 
-Open the Phase 2 setup smoke page:
+## Deploy
 
-```text
-http://localhost:3000/setup/test
-```
+Use a host that can run one long-lived Bun process with persistent disk, such as Railway, a VM, or another container host.
 
-By default, `/setup/test` displays `test user` instead of a fake SMS number. Set `BRIDGY_TEST_SMS_PHONE=+1...` if you want that page tied to a specific local test number.
-
-Run the Phase 1 WhatsApp smoke test:
-
-```sh
-WA_SMOKE_TO=+15551234567 bun run smoke:wa
-```
-
-After scanning the QR, WhatsApp may close the stream with `restart required`. That is expected during pairing; the smoke script reconnects with the saved credentials and should then print `WhatsApp linked.`
-
-## SMS Commands
-
-Users text the Quo number:
-
-```text
-START
-ADD mom +15551234567
-@mom hello
-@+15551234567 hello
-WHO
-HELP
-RESET
-```
-
-Plain SMS replies go to the last active WhatsApp chat.
-
-## Quo Webhook
-
-Configure Quo to send `message.received` events to:
-
-```text
-https://bridgy.chat/webhooks/quo
-```
-
-For local development, expose the Bun server through `cloudflared` and set:
+Set production env from `.env.production.example`, including:
 
 ```sh
 PUBLIC_BASE_URL=https://bridgy.chat
-QUO_API_KEY=...
-QUO_WEBHOOK_KEY=...
-QUO_FROM=PNxxxxxxxx
+DATA_DIR=/app/data
+SMS_DRY_RUN=false
 ```
 
-If Quo credentials are missing, Bridgy runs SMS sends in dry-run mode and prints lines like:
+Mount persistent storage at `/app/data`.
 
-```text
-[sms:dry-run] to +14254052446: WhatsApp linked. Text HELP for commands.
-```
+Run one replica only so two processes do not touch the same WhatsApp session files.
 
-Set `SMS_DRY_RUN=false` once `QUO_API_KEY` and `QUO_FROM` are configured.
-
-## bridgy.chat Config
-
-Use `bridgy.chat` as the canonical public URL:
-
-```sh
-PUBLIC_BASE_URL=https://bridgy.chat
-```
-
-If running locally behind Cloudflare Tunnel, copy `deploy/cloudflared.example.yml` to your local cloudflared config, fill in your tunnel id, and route `bridgy.chat` to `http://localhost:3000`.
-
-If running on Railway, add `bridgy.chat` as the custom domain in Railway, point Cloudflare DNS at Railway as instructed by Railway, and set the production env vars from `.env.production.example`.
-
-Quo should use:
-
-```text
-https://bridgy.chat/webhooks/quo
-```
+If running on Railway, add `bridgy.chat` as the custom domain in Railway or point Cloudflare Tunnel/DNS at the deployed service as appropriate.
 
 ## Persistent Data
 
@@ -151,10 +357,34 @@ data/bridgy.sqlite
 data/wa-sessions/<hashed-sms-phone>/
 ```
 
-For Railway, mount a volume at `/app/data` and set:
+Each SMS phone number is the user id. WhatsApp sessions are isolated per hashed SMS phone number.
+
+## Troubleshooting
+
+Cloudflare `Error 1033` means Cloudflare cannot reach the named tunnel. Start or restart:
 
 ```sh
-DATA_DIR=/app/data
+cloudflared tunnel --config deploy/cloudflared.local.yml run bridgy-dev
 ```
 
-Run one replica only so two processes do not touch the same WhatsApp session files.
+A Cloudflare `502` or origin timeout usually means the tunnel is running but Bun is not reachable. Confirm:
+
+```sh
+curl http://127.0.0.1:3000/health
+```
+
+If the Quo webhook does not seem to fire, check Quo's event history first:
+
+```sh
+bun run quo:webhook-events
+```
+
+Then check Bridgy's local receipt log:
+
+```sh
+curl https://bridgy.chat/debug/webhooks
+```
+
+If the setup page is opened on the same phone that has WhatsApp, use `Get Pairing Code` instead of the QR.
+
+If Baileys logs `restart required` immediately after pairing, let it reconnect. That is expected during the link step.

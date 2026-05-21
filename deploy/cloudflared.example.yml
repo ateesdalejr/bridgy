@@ -6,5 +6,5 @@ credentials-file: /Users/YOU/.cloudflared/YOUR_TUNNEL_ID.json
 
 ingress:
   - hostname: bridgy.chat
-    service: http://localhost:3000
+    service: http://127.0.0.1:3000
   - service: http_status:404

@@ -1,7 +1,7 @@
 import { Database } from "bun:sqlite";
 import { mkdirSync } from "node:fs";
 import { join } from "node:path";
-import type { Contact, SetupLink, UserStatus } from "./types";
+import type { Contact, SetupLink, UserStatus, WebhookDelivery } from "./types";
 import { generateSetupCode, nowMs } from "./utils";
 
 interface UserRow {
@@ -30,7 +30,10 @@ export class Store {
   constructor(dataDir: string) {
     mkdirSync(dataDir, { recursive: true });
     this.db = new Database(join(dataDir, "bridgy.sqlite"), { create: true });
-    this.db.exec("PRAGMA journal_mode = WAL;");
+    this.db.exec(`
+      PRAGMA busy_timeout = 5000;
+      PRAGMA journal_mode = WAL;
+    `);
     this.migrate();
   }
 
@@ -152,6 +155,66 @@ export class Store {
     }
   }
 
+  recordWebhookDelivery(delivery: WebhookDelivery): void {
+    this.db
+      .query(
+        `INSERT INTO webhook_deliveries
+          (id, source, event_type, from_phone, text_preview, status, error, received_at)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+         ON CONFLICT(id)
+         DO UPDATE SET
+          event_type = excluded.event_type,
+          from_phone = excluded.from_phone,
+          text_preview = excluded.text_preview,
+          status = excluded.status,
+          error = excluded.error,
+          received_at = excluded.received_at`,
+      )
+      .run(
+        delivery.id,
+        delivery.source,
+        delivery.eventType,
+        delivery.fromPhone,
+        delivery.textPreview,
+        delivery.status,
+        delivery.error,
+        delivery.receivedAt,
+      );
+  }
+
+  listWebhookDeliveries(limit = 20): WebhookDelivery[] {
+    return this.db
+      .query<
+        {
+          id: string;
+          source: string;
+          event_type: string | null;
+          from_phone: string | null;
+          text_preview: string | null;
+          status: string;
+          error: string | null;
+          received_at: number;
+        },
+        [number]
+      >(
+        `SELECT id, source, event_type, from_phone, text_preview, status, error, received_at
+         FROM webhook_deliveries
+         ORDER BY received_at DESC
+         LIMIT ?`,
+      )
+      .all(limit)
+      .map((row) => ({
+        id: row.id,
+        source: row.source,
+        eventType: row.event_type,
+        fromPhone: row.from_phone,
+        textPreview: row.text_preview,
+        status: row.status,
+        error: row.error,
+        receivedAt: row.received_at,
+      }));
+  }
+
   private migrate(): void {
     this.db.exec(`
       CREATE TABLE IF NOT EXISTS users (
@@ -188,6 +251,17 @@ export class Store {
       CREATE TABLE IF NOT EXISTS processed_webhooks (
         id TEXT PRIMARY KEY,
         processed_at INTEGER NOT NULL
+      );
+
+      CREATE TABLE IF NOT EXISTS webhook_deliveries (
+        id TEXT PRIMARY KEY,
+        source TEXT NOT NULL,
+        event_type TEXT,
+        from_phone TEXT,
+        text_preview TEXT,
+        status TEXT NOT NULL,
+        error TEXT,
+        received_at INTEGER NOT NULL
       );
     `);
   }

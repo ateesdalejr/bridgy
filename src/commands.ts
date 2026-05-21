@@ -2,7 +2,8 @@ import { normalizeE164 } from "./utils";
 
 export type SmsCommand =
   | { type: "start" }
-  | { type: "help" }
+  | { type: "menu" }
+  | { type: "carrier_reserved"; keyword: "HELP" | "STOP" | "START" }
   | { type: "reset" }
   | { type: "who" }
   | { type: "add"; alias: string; phone: string }
@@ -19,7 +20,8 @@ export function parseSmsCommand(input: string): SmsCommand {
 
   const upper = text.toUpperCase();
   if (upper === "START" || upper === "LINK") return { type: "start" };
-  if (upper === "HELP") return { type: "help" };
+  if (upper === "HELP" || upper === "STOP") return { type: "carrier_reserved", keyword: upper };
+  if (upper === "MENU" || upper === "COMMANDS") return { type: "menu" };
   if (upper === "RESET") return { type: "reset" };
   if (upper === "WHO") return { type: "who" };
 
@@ -56,6 +58,7 @@ export function helpText(): string {
   return [
     "Bridgy commands:",
     "START - link WhatsApp",
+    "MENU - show commands",
     "ADD mom +15551234567",
     "@mom hello",
     "@+15551234567 hello",

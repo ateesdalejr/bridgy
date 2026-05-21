@@ -7,7 +7,13 @@
     "dev": "bun --watch src/index.ts",
     "start": "bun src/index.ts",
     "test": "bun test",
-    "smoke:wa": "bun scripts/whatsapp-smoke.ts"
+    "smoke:wa": "bun scripts/whatsapp-smoke.ts",
+    "quo:list-numbers": "bun scripts/quo-list-numbers.ts",
+    "quo:send-test": "bun scripts/quo-send-test.ts",
+    "quo:create-webhook": "bun scripts/quo-create-webhook.ts",
+    "quo:test-webhook": "bun scripts/quo-test-webhook.ts",
+    "quo:webhook-events": "bun scripts/quo-webhook-events.ts",
+    "quo:webhook-event": "bun scripts/quo-webhook-event.ts"
   },
   "dependencies": {
     "@whiskeysockets/baileys": "^6.7.19",

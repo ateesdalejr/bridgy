@@ -63,6 +63,17 @@ export class WhatsAppSessionManager {
     await session.socket.sendMessage(waJid, { text });
   }
 
+  async requestPairingCode(smsPhone: string, phoneNumber: string): Promise<string> {
+    const session = this.getOrCreateSession(smsPhone);
+    await this.startSession(smsPhone);
+    await this.waitForQr(session, 20_000);
+
+    if (!session.socket) throw new Error("WhatsApp session is not ready yet.");
+    if (session.socket.authState.creds.registered) throw new Error("WhatsApp is already linked.");
+
+    return session.socket.requestPairingCode(phoneNumber);
+  }
+
   getSnapshot(smsPhone: string): SessionSnapshot {
     const session = this.getOrCreateSession(smsPhone);
     return snapshot(session);
@@ -192,6 +203,33 @@ export class WhatsAppSessionManager {
 
   private authDir(smsPhone: string): string {
     return join(this.dataDir, "wa-sessions", hashPhone(smsPhone));
+  }
+
+  private waitForQr(session: SessionState, timeoutMs: number): Promise<void> {
+    if (session.qr || session.status === "qr_ready") return Promise.resolve();
+    if (session.status === "linked") return Promise.resolve();
+
+    return new Promise((resolve, reject) => {
+      let unsubscribe = () => {};
+      const timeout = setTimeout(() => {
+        unsubscribe();
+        reject(new Error("Timed out waiting for WhatsApp pairing readiness. Try again."));
+      }, timeoutMs);
+
+      unsubscribe = this.subscribe(session.smsPhone, (snapshot) => {
+        if (snapshot.status === "qr_ready" || snapshot.status === "linked") {
+          clearTimeout(timeout);
+          unsubscribe();
+          resolve();
+        }
+
+        if (snapshot.status === "error") {
+          clearTimeout(timeout);
+          unsubscribe();
+          reject(new Error(snapshot.error ?? "WhatsApp setup failed."));
+        }
+      });
+    });
   }
 }
 

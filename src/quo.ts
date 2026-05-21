@@ -65,6 +65,9 @@ export function parseQuoInboundMessage(payload: unknown, fallbackEventId: string
   const event = payload as Record<string, unknown>;
   if (event.type !== "message.received") return null;
 
+  const betaInbound = parseBetaInboundMessage(event, fallbackEventId);
+  if (betaInbound) return betaInbound;
+
   const data = event.data as Record<string, unknown> | undefined;
   const object = data?.object as Record<string, unknown> | undefined;
   if (!object) return null;
@@ -73,11 +76,39 @@ export function parseQuoInboundMessage(payload: unknown, fallbackEventId: string
   if (direction && direction !== "incoming" && direction !== "inbound") return null;
 
   const from = String(object.from ?? "");
-  const toList = Array.isArray(object.to) ? object.to : [];
+  const toList = Array.isArray(object.to) ? object.to : object.to ? [object.to] : [];
   const to = String(toList[0] ?? "");
-  const text = String(object.text ?? object.content ?? "").trim();
+  const text = String(object.text ?? object.body ?? object.content ?? "").trim();
   const messageId = String(object.id ?? fallbackEventId);
   const phoneNumberId = object.phoneNumberId ? String(object.phoneNumberId) : undefined;
+
+  if (!from || !to || !text) return null;
+
+  return {
+    eventId: String(event.id ?? fallbackEventId),
+    messageId,
+    from,
+    to,
+    text,
+    phoneNumberId,
+  };
+}
+
+function parseBetaInboundMessage(event: Record<string, unknown>, fallbackEventId: string): QuoInboundMessage | null {
+  const data = event.data as Record<string, unknown> | undefined;
+  const context = data?.context as Record<string, unknown> | undefined;
+  const resource = data?.resource as Record<string, unknown> | undefined;
+  if (!context || !resource) return null;
+
+  const direction = String(resource.direction ?? "");
+  if (direction && direction !== "incoming" && direction !== "inbound") return null;
+
+  const from = String(context.senderIdentifier ?? "");
+  const recipients = Array.isArray(context.recipientIdentifiers) ? context.recipientIdentifiers : [];
+  const to = String(recipients[0] ?? "");
+  const text = String(resource.text ?? resource.body ?? resource.content ?? "").trim();
+  const messageId = String(resource.id ?? fallbackEventId);
+  const phoneNumberId = context.phoneNumberId ? String(context.phoneNumberId) : undefined;
 
   if (!from || !to || !text) return null;
 

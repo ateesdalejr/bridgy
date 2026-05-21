@@ -22,7 +22,7 @@ whatsapp.onStatusChange(async (snapshot) => {
     const user = store.getUser(snapshot.smsPhone);
     if (user?.status !== "linked") {
       store.setUserStatus(snapshot.smsPhone, "linked");
-      await safeSendSms(snapshot.smsPhone, "WhatsApp linked. Text HELP for commands.");
+      await safeSendSms(snapshot.smsPhone, "WhatsApp linked. Text MENU for commands.");
     }
   }
 
@@ -49,10 +49,11 @@ const server = Bun.serve({
 
     try {
       if (url.pathname === "/health") return jsonResponse({ ok: true });
+      if (url.pathname === "/debug/webhooks") return jsonResponse({ deliveries: store.listWebhookDeliveries() });
       if (url.pathname === "/") return new Response("Bridgy is running.\n", { headers: { "Content-Type": "text/plain" } });
       if (url.pathname === "/webhooks/quo" && request.method === "POST") return handleQuoWebhook(request);
 
-      const setupMatch = url.pathname.match(/^\/setup\/([^/]+)(?:\/(start|events|qr))?$/);
+      const setupMatch = url.pathname.match(/^\/setup\/([^/]+)(?:\/(start|events|qr|status|pairing-code))?$/);
       if (setupMatch) return handleSetupRoute(request, setupMatch[1], setupMatch[2] ?? "page");
 
       const shortCode = url.pathname.match(/^\/([A-Za-z0-9]{4,12})$/);
@@ -71,19 +72,80 @@ console.log(`Bridgy listening on http://localhost:${server.port}`);
 async function handleQuoWebhook(request: Request): Promise<Response> {
   const rawBody = await request.text();
   const deliveryId = request.headers.get("webhook-id") ?? crypto.randomUUID();
+  const receivedAt = nowMs();
+  let payload: unknown = null;
 
   if (config.quoWebhookKey && !verifyQuoWebhook(rawBody, request.headers, config.quoWebhookKey)) {
+    store.recordWebhookDelivery({
+      id: deliveryId,
+      source: "quo",
+      eventType: null,
+      fromPhone: null,
+      textPreview: null,
+      status: "invalid_signature",
+      error: "Invalid signature",
+      receivedAt,
+    });
+    console.warn(`[quo:webhook] invalid signature delivery=${deliveryId}`);
     return new Response("Invalid signature", { status: 401 });
   }
 
   if (!store.markWebhookProcessed(deliveryId)) return new Response("OK");
 
-  const payload = JSON.parse(rawBody);
+  try {
+    payload = JSON.parse(rawBody);
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    store.recordWebhookDelivery({
+      id: deliveryId,
+      source: "quo",
+      eventType: null,
+      fromPhone: null,
+      textPreview: null,
+      status: "invalid_json",
+      error: message,
+      receivedAt,
+    });
+    console.warn(`[quo:webhook] invalid json delivery=${deliveryId}: ${message}`);
+    return new Response("Invalid JSON", { status: 400 });
+  }
+
+  const eventType = getPayloadType(payload);
   const inbound = parseQuoInboundMessage(payload, deliveryId);
-  if (!inbound) return new Response("OK");
+  if (!inbound) {
+    store.recordWebhookDelivery({
+      id: deliveryId,
+      source: "quo",
+      eventType,
+      fromPhone: null,
+      textPreview: null,
+      status: "ignored",
+      error: "Not a supported inbound message payload",
+      receivedAt,
+    });
+    console.log(`[quo:webhook] ignored delivery=${deliveryId} type=${eventType ?? "unknown"}`);
+    return new Response("OK");
+  }
 
   await handleSms(inbound.from, inbound.text);
+  store.recordWebhookDelivery({
+    id: deliveryId,
+    source: "quo",
+    eventType,
+    fromPhone: inbound.from,
+    textPreview: inbound.text.slice(0, 80),
+    status: "handled",
+    error: null,
+    receivedAt,
+  });
+  console.log(`[quo:webhook] handled delivery=${deliveryId} from=${inbound.from} text=${JSON.stringify(inbound.text)}`);
   return new Response("OK");
+}
+
+function getPayloadType(payload: unknown): string | null {
+  if (!payload || typeof payload !== "object") return null;
+  const type = (payload as Record<string, unknown>).type;
+  return typeof type === "string" ? type : null;
 }
 
 async function handleSms(from: string, text: string): Promise<void> {
@@ -97,11 +159,14 @@ async function handleSms(from: string, text: string): Promise<void> {
     case "start": {
       store.setUserStatus(smsPhone, "pending_link");
       const link = store.createSetupLink(smsPhone, config.setupTtlMs);
-      await safeSendSms(smsPhone, `Open this on a computer to link WhatsApp: ${config.publicBaseUrl}/${link.code}`);
+      await safeSendSms(smsPhone, `Link WhatsApp: ${config.publicBaseUrl}/${link.code} Open on a computer for QR, or on your phone for pairing code.`);
       return;
     }
-    case "help":
+    case "menu":
       await safeSendSms(smsPhone, helpText());
+      return;
+    case "carrier_reserved":
+      console.log(`[sms] ignored carrier-reserved keyword ${command.keyword} from ${smsPhone}`);
       return;
     case "reset":
       await whatsapp.resetSession(smsPhone);
@@ -159,7 +224,7 @@ async function sendWhatsAppOrExplain(smsPhone: string, waJid: string, text: stri
   if (snapshot.status !== "linked") {
     await whatsapp.startSession(smsPhone);
     const link = store.createSetupLink(smsPhone, config.setupTtlMs);
-    await safeSendSms(smsPhone, `WhatsApp is not linked yet. Open ${config.publicBaseUrl}/${link.code} on a computer.`);
+    await safeSendSms(smsPhone, `WhatsApp is not linked yet: ${config.publicBaseUrl}/${link.code}`);
     return;
   }
 
@@ -181,8 +246,26 @@ async function handleSetupRoute(request: Request, rawCode: string, action: strin
     return jsonResponse({ ok: true });
   }
 
+  if (action === "pairing-code" && request.method === "POST") {
+    store.setUserStatus(smsPhone, "pending_link");
+    const body = await request.json().catch(() => null);
+    const phone = body && typeof body === "object" ? normalizeE164(String((body as { phone?: unknown }).phone ?? "")) : null;
+    if (!phone) return new Response("Enter a WhatsApp phone number like +15551234567.", { status: 400 });
+
+    const code = await whatsapp.requestPairingCode(smsPhone, phone.slice(1));
+    return jsonResponse({ code: formatPairingCode(code) });
+  }
+
   if (action === "events" && request.method === "GET") {
     return streamSessionEvents(smsPhone);
+  }
+
+  if (action === "status" && request.method === "GET") {
+    return jsonResponse(whatsapp.getSnapshot(smsPhone), {
+      headers: {
+        "Cache-Control": "no-store",
+      },
+    });
   }
 
   if (action === "qr" && request.method === "GET") {
@@ -213,6 +296,10 @@ function resolveSetupSmsPhone(code: string): string | null {
   const link = store.getSetupLink(code);
   if (!link || link.expiresAt < nowMs()) return null;
   return link.smsPhone;
+}
+
+function formatPairingCode(code: string): string {
+  return code.replace(/(.{4})/g, "$1 ").trim();
 }
 
 function streamSessionEvents(smsPhone: string): Response {

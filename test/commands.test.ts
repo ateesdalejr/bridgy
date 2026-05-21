@@ -7,6 +7,13 @@ describe("parseSmsCommand", () => {
     expect(parseSmsCommand("link")).toEqual({ type: "start" });
   });
 
+  test("uses MENU instead of carrier HELP", () => {
+    expect(parseSmsCommand("MENU")).toEqual({ type: "menu" });
+    expect(parseSmsCommand("COMMANDS")).toEqual({ type: "menu" });
+    expect(parseSmsCommand("HELP")).toEqual({ type: "carrier_reserved", keyword: "HELP" });
+    expect(parseSmsCommand("STOP")).toEqual({ type: "carrier_reserved", keyword: "STOP" });
+  });
+
   test("parses contact add", () => {
     expect(parseSmsCommand("ADD Mom +1 (555) 123-4567")).toEqual({
       type: "add",

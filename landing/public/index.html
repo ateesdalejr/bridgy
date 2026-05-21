@@ -1,0 +1,130 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta
+      name="description"
+      content="Join the Bridgy.chat public beta waitlist for WhatsApp over SMS."
+    />
+    <title>Bridgy.chat Waitlist</title>
+    <link rel="stylesheet" href="/styles.css" />
+    <script src="/app.js" defer></script>
+  </head>
+  <body>
+    <header class="site-header">
+      <a class="brand" href="/" aria-label="Bridgy.chat home">
+        <span class="brand-mark" aria-hidden="true">B</span>
+        <span>Bridgy.chat</span>
+      </a>
+      <nav aria-label="Primary">
+        <a href="#how">How it works</a>
+        <a href="#waitlist">Waitlist</a>
+      </nav>
+    </header>
+
+    <main>
+      <section class="hero" id="waitlist" aria-labelledby="hero-title">
+        <div class="scene" aria-hidden="true">
+          <div class="scene-grid"></div>
+          <div class="message-card sms-card">
+            <div class="device-bar">
+              <span>SMS</span>
+              <span>9:41</span>
+            </div>
+            <div class="thread">
+              <p class="bubble outgoing">@maya running late by 10</p>
+              <p class="bubble system">Sent to Maya.</p>
+              <p class="bubble incoming">Maya: No rush. Can you bring the charger?</p>
+            </div>
+          </div>
+          <div class="bridge-line"></div>
+          <div class="message-card wa-card">
+            <div class="device-bar">
+              <span>WhatsApp</span>
+              <span>online</span>
+            </div>
+            <div class="thread">
+              <p class="bubble incoming">Running late by 10</p>
+              <p class="bubble outgoing">No rush. Can you bring the charger?</p>
+            </div>
+          </div>
+        </div>
+
+        <div class="hero-content">
+          <p class="eyebrow">Public beta waitlist</p>
+          <h1 id="hero-title">Bridgy.chat</h1>
+          <p class="lede">WhatsApp for people who would rather text.</p>
+          <p class="summary">
+            Bridgy turns a basic SMS thread into a bridge for WhatsApp messages, so dumb phone
+            users can stay reachable without living inside another app.
+          </p>
+
+          <form class="signup" action="/api/waitlist" method="post" data-waitlist-form novalidate>
+            <input type="hidden" name="source" value="landing" />
+            <label class="trap" aria-hidden="true">
+              Company
+              <input name="company" tabindex="-1" autocomplete="off" />
+            </label>
+            <label class="field" for="contact">
+              <span>Email or phone</span>
+              <input
+                id="contact"
+                name="contact"
+                type="text"
+                inputmode="email"
+                autocomplete="email tel"
+                placeholder="you@example.com or +1 555 123 4567"
+                required
+              />
+            </label>
+            <label class="consent" for="consent">
+              <input id="consent" name="consent" type="checkbox" value="yes" required />
+              <span>Contact me about Bridgy beta access. SMS rates may apply.</span>
+            </label>
+            <div class="form-row">
+              <button type="submit">Request invite</button>
+              <p class="status" data-status aria-live="polite" hidden></p>
+            </div>
+          </form>
+        </div>
+      </section>
+
+      <section class="how" id="how" aria-labelledby="how-title">
+        <div class="section-heading">
+          <p class="eyebrow">Built for the in-between</p>
+          <h2 id="how-title">Keep the group chat without keeping the smartphone.</h2>
+        </div>
+        <div class="steps">
+          <article>
+            <span class="step-number">01</span>
+            <h3>Text Bridgy</h3>
+            <p>Send a normal SMS to your Bridgy number, including aliases like @maya.</p>
+          </article>
+          <article>
+            <span class="step-number">02</span>
+            <h3>Bridge to WhatsApp</h3>
+            <p>Bridgy relays the message through the WhatsApp account you linked once.</p>
+          </article>
+          <article>
+            <span class="step-number">03</span>
+            <h3>Replies come back</h3>
+            <p>WhatsApp replies land as SMS, ready for a basic phone or low-distraction setup.</p>
+          </article>
+        </div>
+      </section>
+
+      <section class="beta" aria-labelledby="beta-title">
+        <div>
+          <p class="eyebrow">The first beta</p>
+          <h2 id="beta-title">Small, text-only, and focused.</h2>
+        </div>
+        <ul>
+          <li>One linked WhatsApp account per SMS number.</li>
+          <li>Simple aliases for people you message often.</li>
+          <li>Designed for people testing dumb phones, Light Phones, or quieter routines.</li>
+        </ul>
+      </section>
+    </main>
+  </body>
+</html>
