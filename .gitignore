@@ -1,8 +1,21 @@
+# Dependencies
 node_modules/
-data/
+
+# Local environment and secrets
 .env
 .env.*
 !.env.example
-.DS_Store
-*.log
+!.env.production.example
+.dev.vars
+.dev.vars.*
+
+# Runtime state
+data/
+.wrangler/
+
+# Local tunnel config
 deploy/cloudflared.local.yml
+
+# Logs and OS files
+*.log
+.DS_Store

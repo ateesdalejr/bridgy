@@ -1,10 +1,10 @@
-# Example Cloudflare Tunnel config for running Bridgy locally behind bridgy.chat.
-# Copy this outside the repo to your cloudflared config directory and fill in
-# your tunnel id / credentials file.
+# Optional Cloudflare Tunnel config for running Bridgy behind a custom hostname.
+# Copy to deploy/cloudflared.local.yml and fill in your tunnel id,
+# credentials file, and hostname.
 tunnel: YOUR_TUNNEL_ID
 credentials-file: /Users/YOU/.cloudflared/YOUR_TUNNEL_ID.json
 
 ingress:
-  - hostname: bridgy.chat
+  - hostname: your-public-host.example
     service: http://127.0.0.1:3000
   - service: http_status:404

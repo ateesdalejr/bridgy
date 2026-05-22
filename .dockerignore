@@ -1,9 +1,15 @@
 .git
+node_modules
+data
+.wrangler
+
 .env
 .env.*
 !.env.example
 !.env.production.example
-data
-node_modules
+deploy/cloudflared.local.yml
+.dev.vars
+.dev.vars.*
+
 *.log
 .DS_Store
