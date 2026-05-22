@@ -48,6 +48,10 @@ a {
   padding: 22px 0;
 }
 
+.page-header {
+  position: relative;
+}
+
 .brand {
   display: inline-flex;
   align-items: center;
@@ -358,7 +362,8 @@ button:disabled {
 }
 
 .how,
-.beta {
+.beta,
+.trust {
   width: min(1160px, calc(100% - 40px));
   margin: 0 auto;
 }
@@ -445,6 +450,117 @@ article p,
   background: var(--gold);
 }
 
+.trust {
+  padding: 58px 0 72px;
+  border-top: 1px solid var(--line);
+}
+
+.trust-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.trust-grid article {
+  min-height: 230px;
+}
+
+.trust-links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-top: 18px;
+}
+
+.trust-links a {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 10px 14px;
+  background: var(--surface);
+  color: var(--ink);
+  text-decoration: none;
+  font-weight: 800;
+}
+
+.site-footer {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px 24px;
+  width: min(1160px, calc(100% - 40px));
+  margin: 0 auto;
+  padding: 28px 0 38px;
+  border-top: 1px solid var(--line);
+  color: var(--muted);
+  font-size: 14px;
+}
+
+.site-footer p {
+  margin: 0;
+}
+
+.site-footer nav {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 14px;
+}
+
+.simple-page {
+  width: min(840px, calc(100% - 40px));
+  margin: 0 auto;
+  padding: 74px 0 58px;
+}
+
+.simple-page h1 {
+  max-width: 780px;
+  font-size: clamp(48px, 8vw, 88px);
+}
+
+.policy section {
+  margin-top: 34px;
+  padding-top: 28px;
+  border-top: 1px solid var(--line);
+}
+
+.policy h2 {
+  font-size: clamp(26px, 4vw, 40px);
+}
+
+.policy ul {
+  display: grid;
+  gap: 12px;
+  margin: 18px 0 0;
+  padding-left: 22px;
+  color: var(--muted);
+  line-height: 1.55;
+}
+
+.policy p {
+  color: var(--muted);
+  line-height: 1.6;
+}
+
+.policy code {
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  padding: 2px 6px;
+  background: var(--surface);
+  color: var(--ink);
+}
+
+.status-pill {
+  display: inline-flex;
+  width: fit-content;
+  margin: 20px 0 0;
+  border: 1px solid rgba(31, 122, 77, 0.28);
+  border-radius: 8px;
+  padding: 8px 12px;
+  background: #dff1e7;
+  color: var(--green-dark) !important;
+  font-weight: 900;
+}
+
 @media (max-width: 900px) {
   .site-header {
     width: min(100% - 32px, 720px);
@@ -498,7 +614,8 @@ article p,
 
   .section-heading,
   .steps,
-  .beta {
+  .beta,
+  .trust-grid {
     grid-template-columns: 1fr;
   }
 
@@ -597,7 +714,10 @@ article p,
   }
 
   .how,
-  .beta {
+  .beta,
+  .trust,
+  .site-footer,
+  .simple-page {
     width: min(100% - 32px, 560px);
   }
 }

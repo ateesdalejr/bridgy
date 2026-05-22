@@ -4,4 +4,4 @@ pages_build_output_dir = "./public"
 
 [[kv_namespaces]]
 binding = "WAITLIST"
-id = "4ae8834eb15d4b6da3a15c6554d6cc7c"
+id = "replace_with_your_waitlist_kv_namespace_id"

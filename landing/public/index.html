@@ -19,7 +19,9 @@
       </a>
       <nav aria-label="Primary">
         <a href="#how">How it works</a>
+        <a href="#trust">Trust</a>
         <a href="#waitlist">Waitlist</a>
+        <a href="https://github.com/ateesdalejr/bridgy">GitHub</a>
       </nav>
     </header>
 
@@ -125,6 +127,48 @@
           <li>Designed for people testing dumb phones, Light Phones, or quieter routines.</li>
         </ul>
       </section>
+
+      <section class="trust" id="trust" aria-labelledby="trust-title">
+        <div class="section-heading">
+          <p class="eyebrow">Trust and control</p>
+          <h2 id="trust-title">Use the hosted bridge, or run your own.</h2>
+        </div>
+        <div class="trust-grid">
+          <article>
+            <h3>Hosted Bridgy</h3>
+            <p>No server, tunnel, webhook setup, or WhatsApp session storage to manage. Good for people who just want WhatsApp over SMS.</p>
+          </article>
+          <article>
+            <h3>Self-hosted</h3>
+            <p>The source is on GitHub under AGPL-3.0. Bring your own SMS provider, public HTTPS URL, and persistent disk.</p>
+          </article>
+          <article>
+            <h3>Exit path</h3>
+            <p>Text <strong>RESET</strong> to unlink WhatsApp locally. Text <strong>DELETE</strong> to delete Bridgy records for your SMS number.</p>
+          </article>
+          <article>
+            <h3>Transparent by default</h3>
+            <p>Messages are routed, not used for training. Diagnostic webhook previews are retained for seven days by default.</p>
+          </article>
+        </div>
+        <div class="trust-links">
+          <a href="/privacy">Privacy</a>
+          <a href="/security">Security</a>
+          <a href="/status">Status</a>
+          <a href="https://github.com/ateesdalejr/bridgy">Source</a>
+        </div>
+      </section>
     </main>
+
+    <footer class="site-footer">
+      <p>Built by <a href="https://github.com/ateesdalejr">@ateesdalejr</a>.</p>
+      <nav aria-label="Footer">
+        <a href="/privacy">Privacy</a>
+        <a href="/security">Security</a>
+        <a href="/status">Status</a>
+        <a href="mailto:hello@bridgy.chat">Contact</a>
+      </nav>
+      <p>Bridgy uses WhatsApp Web through Baileys and is not affiliated with WhatsApp or Meta.</p>
+    </footer>
   </body>
 </html>

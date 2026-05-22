@@ -9,6 +9,10 @@ export interface Config {
   setupTtlMs: number;
   defaultWaJid: string;
   testSmsPhone: string | null;
+  sourceUrl: string;
+  trustBaseUrl: string;
+  commitSha: string | null;
+  webhookDeliveryRetentionMs: number;
 }
 
 export function loadConfig(env = Bun.env): Config {
@@ -26,6 +30,10 @@ export function loadConfig(env = Bun.env): Config {
     setupTtlMs: Number(env.SETUP_LINK_TTL_MS ?? 30 * 60 * 1000),
     defaultWaJid: env.BRIDGY_DEFAULT_WA_JID ?? "",
     testSmsPhone: env.BRIDGY_TEST_SMS_PHONE ?? null,
+    sourceUrl: env.BRIDGY_SOURCE_URL ?? "https://github.com/ateesdalejr/bridgy",
+    trustBaseUrl: stripTrailingSlash(env.BRIDGY_TRUST_BASE_URL ?? "https://bridgy.chat"),
+    commitSha: env.BRIDGY_COMMIT_SHA ?? env.RAILWAY_GIT_COMMIT_SHA ?? env.VERCEL_GIT_COMMIT_SHA ?? env.CF_PAGES_COMMIT_SHA ?? null,
+    webhookDeliveryRetentionMs: daysToMs(env.WEBHOOK_DELIVERY_RETENTION_DAYS, 7),
   };
 }
 
@@ -38,4 +46,10 @@ function parseBool(value: string | undefined): boolean | null {
   if (["1", "true", "yes", "on"].includes(value.toLowerCase())) return true;
   if (["0", "false", "no", "off"].includes(value.toLowerCase())) return false;
   return null;
+}
+
+function daysToMs(value: string | undefined, fallbackDays: number): number {
+  const days = Number(value ?? fallbackDays);
+  if (!Number.isFinite(days) || days <= 0) return fallbackDays * 24 * 60 * 60 * 1000;
+  return days * 24 * 60 * 60 * 1000;
 }

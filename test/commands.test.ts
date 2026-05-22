@@ -41,4 +41,8 @@ describe("parseSmsCommand", () => {
   test("plain text stays plain", () => {
     expect(parseSmsCommand("hello back")).toEqual({ type: "plain", text: "hello back" });
   });
+
+  test("parses deletion command", () => {
+    expect(parseSmsCommand("DELETE")).toEqual({ type: "delete" });
+  });
 });

@@ -215,6 +215,19 @@ export class Store {
       }));
   }
 
+  pruneWebhookDeliveries(beforeMs: number): void {
+    this.db.query("DELETE FROM webhook_deliveries WHERE received_at < ?").run(beforeMs);
+  }
+
+  deleteUserData(smsPhone: string): void {
+    this.db.transaction(() => {
+      this.db.query("DELETE FROM contacts WHERE sms_phone = ?").run(smsPhone);
+      this.db.query("DELETE FROM setup_links WHERE sms_phone = ?").run(smsPhone);
+      this.db.query("DELETE FROM webhook_deliveries WHERE from_phone = ?").run(smsPhone);
+      this.db.query("DELETE FROM users WHERE sms_phone = ?").run(smsPhone);
+    })();
+  }
+
   private migrate(): void {
     this.db.exec(`
       CREATE TABLE IF NOT EXISTS users (

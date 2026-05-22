@@ -5,6 +5,7 @@ export type SmsCommand =
   | { type: "menu" }
   | { type: "carrier_reserved"; keyword: "HELP" | "STOP" | "START" }
   | { type: "reset" }
+  | { type: "delete" }
   | { type: "who" }
   | { type: "add"; alias: string; phone: string }
   | { type: "send_alias"; alias: string; text: string }
@@ -23,6 +24,7 @@ export function parseSmsCommand(input: string): SmsCommand {
   if (upper === "HELP" || upper === "STOP") return { type: "carrier_reserved", keyword: upper };
   if (upper === "MENU" || upper === "COMMANDS") return { type: "menu" };
   if (upper === "RESET") return { type: "reset" };
+  if (upper === "DELETE") return { type: "delete" };
   if (upper === "WHO") return { type: "who" };
 
   const add = text.match(/^ADD\s+(\S+)\s+(.+)$/i);
@@ -64,5 +66,6 @@ export function helpText(): string {
     "@+15551234567 hello",
     "WHO - list contacts",
     "RESET - unlink locally",
+    "DELETE - delete local Bridgy data",
   ].join("\n");
 }

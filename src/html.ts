@@ -4,6 +4,11 @@ import { escapeHtml, toShortDisplayPhone } from "./utils";
 interface SetupPageOptions {
   displayLabel?: string;
   helperText?: string;
+  sourceUrl?: string;
+  privacyUrl?: string;
+  securityUrl?: string;
+  statusUrl?: string;
+  versionLabel?: string;
 }
 
 export function setupPage(code: string, smsPhone: string, options: SetupPageOptions = {}): string {
@@ -12,6 +17,11 @@ export function setupPage(code: string, smsPhone: string, options: SetupPageOpti
   const helperText = options.helperText
     ? `<p class="hint">${escapeHtml(options.helperText)}</p>`
     : "";
+  const sourceUrl = escapeHtml(options.sourceUrl ?? "https://github.com/ateesdalejr/bridgy");
+  const privacyUrl = escapeHtml(options.privacyUrl ?? "https://bridgy.chat/privacy");
+  const securityUrl = escapeHtml(options.securityUrl ?? "https://bridgy.chat/security");
+  const statusUrl = escapeHtml(options.statusUrl ?? "https://bridgy.chat/status");
+  const versionLabel = escapeHtml(options.versionLabel ?? "local");
 
   return `<!doctype html>
 <html lang="en">
@@ -131,6 +141,19 @@ export function setupPage(code: string, smsPhone: string, options: SetupPageOpti
         text-align: center;
         letter-spacing: 2px;
       }
+      .trust-links {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 10px 14px;
+        margin-top: 18px;
+        padding-top: 16px;
+        border-top: 1px solid #d7dce2;
+        color: #64748b;
+        font-size: 13px;
+      }
+      .trust-links a {
+        color: inherit;
+      }
       @media (prefers-color-scheme: dark) {
         :root { background: #111827; color: #f9fafb; }
         main { background: #182235; border-color: #334155; }
@@ -140,6 +163,7 @@ export function setupPage(code: string, smsPhone: string, options: SetupPageOpti
         .mobile-warning { background: #3a2414; color: #fed7aa; border-color: #9a5b1e; }
         .pairing { border-color: #334155; }
         .pairing-code { background: #102e26; color: #a7f3d0; }
+        .trust-links { border-color: #334155; color: #94a3b8; }
       }
     </style>
   </head>
@@ -162,6 +186,13 @@ export function setupPage(code: string, smsPhone: string, options: SetupPageOpti
         <div id="pairing-code" class="pairing-code"></div>
         <p class="hint">In WhatsApp, open Linked Devices, choose Link a Device, then use the phone-number pairing option and enter this code.</p>
       </div>
+      <nav class="trust-links" aria-label="Trust links">
+        <a href="${sourceUrl}">Source</a>
+        <a href="${privacyUrl}">Privacy</a>
+        <a href="${securityUrl}">Security</a>
+        <a href="${statusUrl}">Status</a>
+        <span>Version ${versionLabel}</span>
+      </nav>
     </main>
     <script>
       const code = ${JSON.stringify(safeCode)};

@@ -1,0 +1,67 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="description" content="Bridgy.chat privacy policy." />
+    <title>Privacy - Bridgy.chat</title>
+    <link rel="stylesheet" href="/styles.css" />
+  </head>
+  <body>
+    <header class="site-header page-header">
+      <a class="brand" href="/" aria-label="Bridgy.chat home">
+        <span class="brand-mark" aria-hidden="true">B</span>
+        <span>Bridgy.chat</span>
+      </a>
+      <nav aria-label="Primary">
+        <a href="/security">Security</a>
+        <a href="/status">Status</a>
+        <a href="https://github.com/ateesdalejr/bridgy">GitHub</a>
+      </nav>
+    </header>
+
+    <main class="simple-page policy">
+      <p class="eyebrow">Privacy</p>
+      <h1>Small data, clear exits.</h1>
+      <p class="summary">
+        Bridgy exists to route messages between SMS and WhatsApp. It does not sell personal data or use message contents for AI training.
+      </p>
+
+      <section>
+        <h2>What Bridgy Stores</h2>
+        <ul>
+          <li>Waitlist contact details, such as an email address or phone number.</li>
+          <li>Your SMS phone number and WhatsApp linking state.</li>
+          <li>Aliases you create, such as `mom` or `maya`.</li>
+          <li>WhatsApp Web session files needed to keep the bridge linked.</li>
+          <li>Recent webhook delivery diagnostics, including short message previews.</li>
+        </ul>
+      </section>
+
+      <section>
+        <h2>Retention</h2>
+        <p>Webhook diagnostic previews are retained for seven days by default. WhatsApp session files and aliases remain until you reset or delete your Bridgy data.</p>
+      </section>
+
+      <section>
+        <h2>Deletion</h2>
+        <p>Text <strong>RESET</strong> to unlink WhatsApp locally. Text <strong>DELETE</strong> to remove Bridgy records for your SMS number and unlink WhatsApp from the bridge.</p>
+        <p>For waitlist deletion or hosted account help, email <a href="mailto:privacy@bridgy.chat">privacy@bridgy.chat</a>.</p>
+      </section>
+
+      <section>
+        <h2>Third Parties</h2>
+        <p>Bridgy uses WhatsApp Web through Baileys and Quo/OpenPhone for SMS delivery. Those services process messages as part of routing them.</p>
+      </section>
+    </main>
+
+    <footer class="site-footer page-footer">
+      <p>Built by <a href="https://github.com/ateesdalejr">@ateesdalejr</a>.</p>
+      <nav aria-label="Footer">
+        <a href="/security">Security</a>
+        <a href="/status">Status</a>
+        <a href="mailto:hello@bridgy.chat">Contact</a>
+      </nav>
+    </footer>
+  </body>
+</html>

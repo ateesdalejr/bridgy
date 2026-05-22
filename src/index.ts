@@ -12,6 +12,9 @@ const store = new Store(config.dataDir);
 const quo = new QuoClient(config);
 const whatsapp = new WhatsAppSessionManager(config.dataDir);
 const TEST_SETUP_SMS_PHONE = "+10000000000";
+const APP_VERSION = "0.1.0";
+
+pruneWebhookDeliveries();
 
 if (config.smsDryRun) {
   console.log("SMS dry-run mode is on. Set QUO_API_KEY and QUO_FROM to send real SMS.");
@@ -49,6 +52,7 @@ const server = Bun.serve({
 
     try {
       if (url.pathname === "/health") return jsonResponse({ ok: true });
+      if (url.pathname === "/version") return jsonResponse(versionInfo());
       if (url.pathname === "/debug/webhooks") return jsonResponse({ deliveries: store.listWebhookDeliveries() });
       if (url.pathname === "/") return new Response("Bridgy is running.\n", { headers: { "Content-Type": "text/plain" } });
       if (url.pathname === "/webhooks/quo" && request.method === "POST") return handleQuoWebhook(request);
@@ -76,7 +80,7 @@ async function handleQuoWebhook(request: Request): Promise<Response> {
   let payload: unknown = null;
 
   if (config.quoWebhookKey && !verifyQuoWebhook(rawBody, request.headers, config.quoWebhookKey)) {
-    store.recordWebhookDelivery({
+    recordWebhookDelivery({
       id: deliveryId,
       source: "quo",
       eventType: null,
@@ -96,7 +100,7 @@ async function handleQuoWebhook(request: Request): Promise<Response> {
     payload = JSON.parse(rawBody);
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
-    store.recordWebhookDelivery({
+    recordWebhookDelivery({
       id: deliveryId,
       source: "quo",
       eventType: null,
@@ -113,7 +117,7 @@ async function handleQuoWebhook(request: Request): Promise<Response> {
   const eventType = getPayloadType(payload);
   const inbound = parseQuoInboundMessage(payload, deliveryId);
   if (!inbound) {
-    store.recordWebhookDelivery({
+    recordWebhookDelivery({
       id: deliveryId,
       source: "quo",
       eventType,
@@ -128,7 +132,7 @@ async function handleQuoWebhook(request: Request): Promise<Response> {
   }
 
   await handleSms(inbound.from, inbound.text);
-  store.recordWebhookDelivery({
+  recordWebhookDelivery({
     id: deliveryId,
     source: "quo",
     eventType,
@@ -173,6 +177,11 @@ async function handleSms(from: string, text: string): Promise<void> {
       store.setActiveChat(smsPhone, null);
       store.setUserStatus(smsPhone, "new");
       await safeSendSms(smsPhone, "Local WhatsApp link reset. Text START to link again.");
+      return;
+    case "delete":
+      await whatsapp.resetSession(smsPhone);
+      store.deleteUserData(smsPhone);
+      await safeSendSms(smsPhone, "Deleted local Bridgy data and unlinked WhatsApp. Text START to begin again.");
       return;
     case "who": {
       const contacts = store.listContacts(smsPhone);
@@ -286,6 +295,11 @@ function renderSetupPage(code: string): Response {
     setupPage(code, smsPhone, {
       displayLabel: isTestSetup && !config.testSmsPhone ? "test user" : undefined,
       helperText: isTestSetup && !config.testSmsPhone ? "This local smoke page is not tied to a real SMS number yet." : undefined,
+      sourceUrl: config.sourceUrl,
+      privacyUrl: trustUrl("/privacy"),
+      securityUrl: trustUrl("/security"),
+      statusUrl: trustUrl("/status"),
+      versionLabel: config.commitSha ? config.commitSha.slice(0, 12) : "local",
     }),
     { headers: { "Content-Type": "text/html; charset=utf-8" } },
   );
@@ -338,4 +352,29 @@ async function safeSendSms(to: string, content: string): Promise<void> {
     const message = error instanceof Error ? error.message : String(error);
     console.error(`SMS send failed to ${to}: ${message}`);
   }
+}
+
+function recordWebhookDelivery(delivery: Parameters<Store["recordWebhookDelivery"]>[0]): void {
+  store.recordWebhookDelivery(delivery);
+  pruneWebhookDeliveries();
+}
+
+function pruneWebhookDeliveries(): void {
+  store.pruneWebhookDeliveries(nowMs() - config.webhookDeliveryRetentionMs);
+}
+
+function trustUrl(path: string): string {
+  return `${config.trustBaseUrl}${path}`;
+}
+
+function versionInfo(): Record<string, unknown> {
+  return {
+    name: "bridgy",
+    version: APP_VERSION,
+    commit: config.commitSha,
+    source: config.sourceUrl,
+    privacy: trustUrl("/privacy"),
+    security: trustUrl("/security"),
+    status: trustUrl("/status"),
+  };
 }

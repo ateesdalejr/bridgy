@@ -25,4 +25,6 @@ Create a Pages project with:
 
 Add a KV namespace binding named `WAITLIST` for both Production and Preview. Submissions are stored under keys prefixed with `waitlist:v1:`.
 
+If you use `wrangler.toml`, replace `replace_with_your_waitlist_kv_namespace_id` with your own KV namespace id.
+
 The form accepts either an email address or a phone number. Ten-digit US phone numbers are normalized to `+1...`; international numbers should be entered in E.164 format.

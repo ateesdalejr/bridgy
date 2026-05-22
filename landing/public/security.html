@@ -1,0 +1,56 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="description" content="Bridgy.chat security information." />
+    <title>Security - Bridgy.chat</title>
+    <link rel="stylesheet" href="/styles.css" />
+  </head>
+  <body>
+    <header class="site-header page-header">
+      <a class="brand" href="/" aria-label="Bridgy.chat home">
+        <span class="brand-mark" aria-hidden="true">B</span>
+        <span>Bridgy.chat</span>
+      </a>
+      <nav aria-label="Primary">
+        <a href="/privacy">Privacy</a>
+        <a href="/status">Status</a>
+        <a href="https://github.com/ateesdalejr/bridgy">GitHub</a>
+      </nav>
+    </header>
+
+    <main class="simple-page policy">
+      <p class="eyebrow">Security</p>
+      <h1>Session files are secrets.</h1>
+      <p class="summary">
+        Bridgy isolates users by SMS phone number, verifies signed SMS webhooks, and keeps WhatsApp session files out of git.
+      </p>
+
+      <section>
+        <h2>Security Basics</h2>
+        <ul>
+          <li>Quo/OpenPhone webhooks are checked with the configured signing key.</li>
+          <li>Each SMS number has separate WhatsApp session storage.</li>
+          <li>Local `.env`, tunnel credentials, SQLite data, and WhatsApp auth files are ignored by git.</li>
+          <li>The setup UI links to source, privacy, security, status, and the running version label.</li>
+        </ul>
+      </section>
+
+      <section>
+        <h2>Report A Vulnerability</h2>
+        <p>Email <a href="mailto:security@bridgy.chat">security@bridgy.chat</a>. Please do not open public GitHub issues for vulnerabilities.</p>
+        <p>The full security policy is in <a href="https://github.com/ateesdalejr/bridgy/blob/main/SECURITY.md">SECURITY.md</a>.</p>
+      </section>
+    </main>
+
+    <footer class="site-footer page-footer">
+      <p>Built by <a href="https://github.com/ateesdalejr">@ateesdalejr</a>.</p>
+      <nav aria-label="Footer">
+        <a href="/privacy">Privacy</a>
+        <a href="/status">Status</a>
+        <a href="mailto:hello@bridgy.chat">Contact</a>
+      </nav>
+    </footer>
+  </body>
+</html>
