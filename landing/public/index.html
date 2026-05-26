@@ -8,13 +8,14 @@
       content="Join the Bridgy.chat public beta waitlist for WhatsApp over SMS."
     />
     <title>Bridgy.chat Waitlist</title>
+    <link rel="icon" type="image/png" href="/favicon.png?v=2" />
+    <link rel="apple-touch-icon" href="/assets/pidgy-favicon.png?v=2" />
     <link rel="stylesheet" href="/styles.css" />
     <script src="/app.js" defer></script>
   </head>
   <body>
     <header class="site-header">
       <a class="brand" href="/" aria-label="Bridgy.chat home">
-        <span class="brand-mark" aria-hidden="true">B</span>
         <span>Bridgy.chat</span>
       </a>
       <nav aria-label="Primary">
@@ -27,68 +28,60 @@
 
     <main>
       <section class="hero" id="waitlist" aria-labelledby="hero-title">
-        <div class="scene" aria-hidden="true">
-          <div class="scene-grid"></div>
-          <div class="message-card sms-card">
-            <div class="device-bar">
-              <span>SMS</span>
-              <span>9:41</span>
-            </div>
-            <div class="thread">
-              <p class="bubble outgoing">@maya running late by 10</p>
-              <p class="bubble system">Sent to Maya.</p>
-              <p class="bubble incoming">Maya: No rush. Can you bring the charger?</p>
-            </div>
+        <div class="hero-layout">
+          <div class="hero-content">
+            <p class="eyebrow">Public beta waitlist</p>
+            <h1 id="hero-title">Bridgy.chat</h1>
+            <p class="lede">WhatsApp for people who would rather text.</p>
+            <p class="summary">
+              Bridgy turns a basic SMS thread into a bridge for WhatsApp messages, so dumb phone
+              users can stay reachable without living inside another app.
+            </p>
           </div>
-          <div class="bridge-line"></div>
-          <div class="message-card wa-card">
-            <div class="device-bar">
-              <span>WhatsApp</span>
-              <span>online</span>
-            </div>
-            <div class="thread">
-              <p class="bubble incoming">Running late by 10</p>
-              <p class="bubble outgoing">No rush. Can you bring the charger?</p>
-            </div>
-          </div>
-        </div>
 
-        <div class="hero-content">
-          <p class="eyebrow">Public beta waitlist</p>
-          <h1 id="hero-title">Bridgy.chat</h1>
-          <p class="lede">WhatsApp for people who would rather text.</p>
-          <p class="summary">
-            Bridgy turns a basic SMS thread into a bridge for WhatsApp messages, so dumb phone
-            users can stay reachable without living inside another app.
-          </p>
-
-          <form class="signup" action="/api/waitlist" method="post" data-waitlist-form novalidate>
-            <input type="hidden" name="source" value="landing" />
-            <label class="trap" aria-hidden="true">
-              Company
-              <input name="company" tabindex="-1" autocomplete="off" />
-            </label>
-            <label class="field" for="contact">
-              <span>Email or phone</span>
-              <input
-                id="contact"
-                name="contact"
-                type="text"
-                inputmode="email"
-                autocomplete="email tel"
-                placeholder="you@example.com or +1 555 123 4567"
-                required
-              />
-            </label>
-            <label class="consent" for="consent">
-              <input id="consent" name="consent" type="checkbox" value="yes" required />
-              <span>Contact me about Bridgy beta access. SMS rates may apply.</span>
-            </label>
-            <div class="form-row">
-              <button type="submit">Request invite</button>
+          <div class="cta-panel">
+            <form id="waitlist-form" class="signup" action="/api/waitlist" method="post" data-waitlist-form novalidate>
+              <input type="hidden" name="source" value="landing" />
+              <label class="trap" aria-hidden="true">
+                Company
+                <input name="company" tabindex="-1" autocomplete="off" />
+              </label>
+              <label class="field" for="contact">
+                <span>Email or phone</span>
+                <input
+                  id="contact"
+                  name="contact"
+                  type="text"
+                  inputmode="email"
+                  autocomplete="email tel"
+                  placeholder="you@example.com or +1 555 123 4567"
+                  required
+                />
+              </label>
+              <label class="consent" for="consent">
+                <input id="consent" name="consent" type="checkbox" value="yes" required />
+                <span>Contact me about Bridgy beta access. SMS rates may apply.</span>
+              </label>
               <p class="status" data-status aria-live="polite" hidden></p>
+            </form>
+
+            <div class="pigeon-hero" aria-label="A pigeon pecking the Bridgy invite button">
+              <video
+                class="pigeon-video"
+                poster="/assets/bridgy-pigeon-poster.png?v=3"
+                autoplay
+                muted
+                loop
+                playsinline
+              >
+                <source src="/assets/bridgy-pigeon-hero.webm?v=3" type="video/webm" />
+                <source src="/assets/bridgy-pigeon-hero.mp4?v=3" type="video/mp4" />
+              </video>
+              <button class="peck-button" type="submit" form="waitlist-form" data-waitlist-submit>
+                Request invite
+              </button>
             </div>
-          </form>
+          </div>
         </div>
       </section>
 

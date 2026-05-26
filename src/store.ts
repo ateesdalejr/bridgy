@@ -1,7 +1,7 @@
 import { Database } from "bun:sqlite";
 import { mkdirSync } from "node:fs";
 import { join } from "node:path";
-import type { Contact, SetupLink, UserStatus, WebhookDelivery } from "./types";
+import type { Contact, SetupLink, UserStatus, WaitlistEntry, WebhookDelivery } from "./types";
 import { generateSetupCode, nowMs } from "./utils";
 
 interface UserRow {
@@ -22,6 +22,20 @@ interface SetupLinkRow {
   sms_phone: string;
   expires_at: number;
   consumed_at: number | null;
+}
+
+interface WaitlistEntryRow {
+  contact: string;
+  contact_type: "email" | "phone";
+  display_contact: string;
+  source: string;
+  interest: "public_beta";
+  created_at: string;
+  updated_at: string;
+  duplicate_count: number;
+  referrer: string | null;
+  country: string | null;
+  user_agent: string | null;
 }
 
 export class Store {
@@ -219,6 +233,68 @@ export class Store {
     this.db.query("DELETE FROM webhook_deliveries WHERE received_at < ?").run(beforeMs);
   }
 
+  getWaitlistEntry(contactHash: string): WaitlistEntry | null {
+    const row = this.db
+      .query<WaitlistEntryRow, [string]>(
+        `SELECT contact, contact_type, display_contact, source, interest, created_at, updated_at,
+          duplicate_count, referrer, country, user_agent
+         FROM waitlist_entries
+         WHERE contact_hash = ?`,
+      )
+      .get(contactHash);
+    return row && waitlistEntryFromRow(row);
+  }
+
+  upsertWaitlistEntry(
+    contactHash: string,
+    entry: Omit<WaitlistEntry, "createdAt" | "updatedAt" | "duplicateCount">,
+  ): { entry: WaitlistEntry; alreadyJoined: boolean } {
+    const existing = this.getWaitlistEntry(contactHash);
+    const now = new Date().toISOString();
+    const saved: WaitlistEntry = {
+      ...entry,
+      createdAt: existing?.createdAt ?? now,
+      updatedAt: now,
+      duplicateCount: existing ? existing.duplicateCount + 1 : 0,
+    };
+
+    this.db
+      .query(
+        `INSERT INTO waitlist_entries
+          (contact_hash, contact, contact_type, display_contact, source, interest, created_at, updated_at,
+            duplicate_count, referrer, country, user_agent)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+         ON CONFLICT(contact_hash)
+         DO UPDATE SET
+          contact = excluded.contact,
+          contact_type = excluded.contact_type,
+          display_contact = excluded.display_contact,
+          source = excluded.source,
+          interest = excluded.interest,
+          updated_at = excluded.updated_at,
+          duplicate_count = excluded.duplicate_count,
+          referrer = excluded.referrer,
+          country = excluded.country,
+          user_agent = excluded.user_agent`,
+      )
+      .run(
+        contactHash,
+        saved.contact,
+        saved.contactType,
+        saved.displayContact,
+        saved.source,
+        saved.interest,
+        saved.createdAt,
+        saved.updatedAt,
+        saved.duplicateCount,
+        saved.referrer,
+        saved.country,
+        saved.userAgent,
+      );
+
+    return { entry: saved, alreadyJoined: Boolean(existing) };
+  }
+
   deleteUserData(smsPhone: string): void {
     this.db.transaction(() => {
       this.db.query("DELETE FROM contacts WHERE sms_phone = ?").run(smsPhone);
@@ -276,6 +352,23 @@ export class Store {
         error TEXT,
         received_at INTEGER NOT NULL
       );
+
+      CREATE TABLE IF NOT EXISTS waitlist_entries (
+        contact_hash TEXT PRIMARY KEY,
+        contact TEXT NOT NULL,
+        contact_type TEXT NOT NULL,
+        display_contact TEXT NOT NULL,
+        source TEXT NOT NULL,
+        interest TEXT NOT NULL,
+        created_at TEXT NOT NULL,
+        updated_at TEXT NOT NULL,
+        duplicate_count INTEGER NOT NULL DEFAULT 0,
+        referrer TEXT,
+        country TEXT,
+        user_agent TEXT
+      );
+
+      CREATE INDEX IF NOT EXISTS idx_waitlist_entries_updated_at ON waitlist_entries (updated_at);
     `);
   }
 }
@@ -286,5 +379,21 @@ function contactFromRow(row: ContactRow): Contact {
     smsPhone: row.sms_phone,
     waJid: row.wa_jid,
     phone: row.phone,
+  };
+}
+
+function waitlistEntryFromRow(row: WaitlistEntryRow): WaitlistEntry {
+  return {
+    contact: row.contact,
+    contactType: row.contact_type,
+    displayContact: row.display_contact,
+    source: row.source,
+    interest: row.interest,
+    createdAt: row.created_at,
+    updatedAt: row.updated_at,
+    duplicateCount: row.duplicate_count,
+    referrer: row.referrer,
+    country: row.country,
+    userAgent: row.user_agent,
   };
 }

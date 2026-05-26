@@ -1,9 +1,20 @@
 services:
+  web:
+    image: nginx:1.27-alpine
+    ports:
+      - "80:80"
+    volumes:
+      - ./landing/public:/usr/share/nginx/html:ro
+      - ./deploy/nginx.cloudflare.conf:/etc/nginx/conf.d/default.conf:ro
+    depends_on:
+      - bridgy
+    restart: unless-stopped
+
   bridgy:
     build: .
     image: bridgy:local
-    ports:
-      - "3000:3000"
+    expose:
+      - "3000"
     env_file:
       - .env
     environment:

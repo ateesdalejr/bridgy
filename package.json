@@ -8,6 +8,7 @@
     "dev": "bun --watch src/index.ts",
     "start": "bun src/index.ts",
     "test": "bun test",
+    "assets:pidgy": "bun scripts/generate-pidgy-assets.ts",
     "smoke:wa": "bun scripts/whatsapp-smoke.ts",
     "quo:list-numbers": "bun scripts/quo-list-numbers.ts",
     "quo:send-test": "bun scripts/quo-send-test.ts",
@@ -24,6 +25,7 @@
   "devDependencies": {
     "@types/bun": "^1.3.4",
     "@types/qrcode": "^1.5.6",
+    "pngjs": "^5.0.0",
     "typescript": "^5.9.3"
   }
 }

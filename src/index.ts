@@ -1,4 +1,5 @@
 import QRCode from "qrcode";
+import { join } from "node:path";
 import { loadConfig } from "./config";
 import { helpText, parseSmsCommand } from "./commands";
 import { setupPage, snapshotEvent, jsonResponse } from "./html";
@@ -6,6 +7,7 @@ import { QuoClient, parseQuoInboundMessage, verifyQuoWebhook } from "./quo";
 import { Store } from "./store";
 import { WhatsAppSessionManager } from "./whatsapp";
 import { nowMs, normalizeE164, phoneToWhatsAppJid, whatsappJidToPhone } from "./utils";
+import { handleWaitlistRequest } from "./waitlist";
 
 const config = loadConfig();
 const store = new Store(config.dataDir);
@@ -53,12 +55,17 @@ const server = Bun.serve({
     try {
       if (url.pathname === "/health") return jsonResponse({ ok: true });
       if (url.pathname === "/version") return jsonResponse(versionInfo());
+      if (url.pathname === "/api/waitlist") return handleWaitlistRequest(store, request);
       if (url.pathname === "/debug/webhooks") return jsonResponse({ deliveries: store.listWebhookDeliveries() });
-      if (url.pathname === "/") return new Response("Bridgy is running.\n", { headers: { "Content-Type": "text/plain" } });
       if (url.pathname === "/webhooks/quo" && request.method === "POST") return handleQuoWebhook(request);
 
       const setupMatch = url.pathname.match(/^\/setup\/([^/]+)(?:\/(start|events|qr|status|pairing-code))?$/);
       if (setupMatch) return handleSetupRoute(request, setupMatch[1], setupMatch[2] ?? "page");
+
+      if (request.method === "GET" || request.method === "HEAD") {
+        const landingResponse = await serveLandingRoute(url.pathname, request.method === "HEAD");
+        if (landingResponse) return landingResponse;
+      }
 
       const shortCode = url.pathname.match(/^\/([A-Za-z0-9]{4,12})$/);
       if (shortCode && request.method === "GET") return renderSetupPage(shortCode[1]);
@@ -377,4 +384,84 @@ function versionInfo(): Record<string, unknown> {
     security: trustUrl("/security"),
     status: trustUrl("/status"),
   };
+}
+
+async function serveLandingRoute(pathname: string, head: boolean): Promise<Response | null> {
+  const pagePath = landingPagePath(pathname);
+  if (pagePath) return servePublicAsset(pagePath, contentTypeFor(pagePath), head);
+
+  const assetPath = landingAssetPath(pathname);
+  if (assetPath) return servePublicAsset(assetPath, contentTypeFor(assetPath), head);
+
+  return null;
+}
+
+function landingPagePath(pathname: string): string | null {
+  const pages: Record<string, string> = {
+    "/": "index.html",
+    "/privacy": "privacy.html",
+    "/privacy.html": "privacy.html",
+    "/security": "security.html",
+    "/security.html": "security.html",
+    "/status": "status.html",
+    "/status.html": "status.html",
+  };
+  return pages[pathname] ?? null;
+}
+
+function landingAssetPath(pathname: string): string | null {
+  const relativePath = safePublicRelativePath(pathname);
+  if (!relativePath) return null;
+
+  if (
+    relativePath === "app.js" ||
+    relativePath === "styles.css" ||
+    relativePath === "favicon.ico" ||
+    relativePath === "favicon.png" ||
+    relativePath.startsWith("assets/")
+  ) {
+    return relativePath;
+  }
+
+  return null;
+}
+
+function safePublicRelativePath(pathname: string): string | null {
+  let decoded: string;
+  try {
+    decoded = decodeURIComponent(pathname);
+  } catch {
+    return null;
+  }
+
+  if (!decoded.startsWith("/") || decoded.includes("..") || decoded.includes("\\")) return null;
+  return decoded.slice(1);
+}
+
+function contentTypeFor(relativePath: string): string {
+  if (relativePath.endsWith(".html")) return "text/html; charset=utf-8";
+  if (relativePath.endsWith(".css")) return "text/css; charset=utf-8";
+  if (relativePath.endsWith(".js")) return "text/javascript; charset=utf-8";
+  if (relativePath.endsWith(".png")) return "image/png";
+  if (relativePath.endsWith(".jpg") || relativePath.endsWith(".jpeg")) return "image/jpeg";
+  if (relativePath.endsWith(".ico")) return "image/x-icon";
+  if (relativePath.endsWith(".mp4")) return "video/mp4";
+  return "application/octet-stream";
+}
+
+function cacheControlFor(relativePath: string): string {
+  if (relativePath.endsWith(".html")) return "no-store";
+  if (relativePath === "app.js" || relativePath === "styles.css") return "no-cache";
+  return "public, max-age=31536000, immutable";
+}
+
+async function servePublicAsset(relativePath: string, contentType: string, head = false): Promise<Response> {
+  const file = Bun.file(join(import.meta.dir, "..", "landing", "public", relativePath));
+  if (!(await file.exists())) return new Response("Not found\n", { status: 404 });
+  return new Response(head ? null : file, {
+    headers: {
+      "Content-Type": contentType,
+      "Cache-Control": cacheControlFor(relativePath),
+    },
+  });
 }

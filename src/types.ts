@@ -55,3 +55,17 @@ export interface WebhookDelivery {
   error: string | null;
   receivedAt: number;
 }
+
+export interface WaitlistEntry {
+  contact: string;
+  contactType: "email" | "phone";
+  displayContact: string;
+  source: string;
+  interest: "public_beta";
+  createdAt: string;
+  updatedAt: string;
+  duplicateCount: number;
+  referrer: string | null;
+  country: string | null;
+  userAgent: string | null;
+}

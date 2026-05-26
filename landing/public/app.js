@@ -2,7 +2,7 @@ const form = document.querySelector("[data-waitlist-form]");
 const statusEl = document.querySelector("[data-status]");
 const contactInput = document.querySelector("#contact");
 const consentInput = document.querySelector("#consent");
-const submitButton = form?.querySelector("button[type='submit']");
+const submitButton = document.querySelector("[data-waitlist-submit]") ?? form?.querySelector("button[type='submit']");
 
 const joinedMessage = "You're on the beta list. I'll reach out when spots open.";
 

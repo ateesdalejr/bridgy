@@ -91,7 +91,16 @@ Self-hosting gives you the source, AGPL rights, and control over your own SMS pr
 docker compose up --build
 ```
 
-Persist `/app/data` and run one replica. WhatsApp session files live there.
+Compose serves the static landing page through nginx on port 80 and proxies dynamic routes to the
+Bun service internally. Persist `/app/data` and run one replica. WhatsApp session files and waitlist
+entries live there.
+
+For a VPS behind Cloudflare:
+
+- Point `bridgy.chat` and optionally `www` to the VPS with proxied DNS records enabled.
+- Set Cloudflare SSL/TLS mode to Flexible for this port-80 origin setup, or add an origin certificate
+  and a 443 nginx listener if you want Full (strict).
+- Set `PUBLIC_BASE_URL=https://bridgy.chat` before creating the Quo/OpenPhone webhook.
 
 ## Development
 
